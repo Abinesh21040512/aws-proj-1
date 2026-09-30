@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Student Result Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2b4a;
+    --ink-light:#5b6478;
+    --paper:#f6f1e4;
+    --paper-dark:#ede5cf;
+    --paper-darker:#e3d9bd;
+    --rule:#c9bfa0;
+    --brass:#9c7a2e;
+    --brass-light:#c9a227;
+    --red-ink:#7a2530;
+    --red-ink-soft:#f1dedd;
+    --green-ink:#2f5233;
+    --green-ink-soft:#dfe8de;
+    --font-display: 'Lora', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family: var(--font-body);
+    background:
+      repeating-linear-gradient(var(--paper) 0px, var(--paper) 27px, var(--rule) 28px),
+      var(--paper);
+    color: var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background: var(--brass-light); color:#fff; }
+
+  /* ---------- Utility ---------- */
+  .mono{ font-family: var(--font-mono); }
+  .hidden{ display:none !important; }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+
+  /* ---------- LOGIN SCREEN ---------- */
+  #login-screen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .id-card{
+    width:100%;
+    max-width:400px;
+    background: var(--paper-dark);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    box-shadow: 0 1px 0 rgba(28,43,74,0.05), 0 20px 40px -20px rgba(28,43,74,0.35);
+    position:relative;
+    overflow:hidden;
+    animation: cardIn .5s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes cardIn{
+    from{ opacity:0; transform:translateY(10px) scale(.98); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .id-card::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:6px;
+    background: repeating-linear-gradient(90deg, var(--ink) 0 10px, transparent 10px 20px);
+    opacity:.85;
+  }
+  .id-card-header{
+    padding:22px 26px 16px;
+    border-bottom:1px dashed var(--rule);
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .id-card-crest{
+    width:40px; height:40px; border-radius:50%;
+    border:2px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:16px;
+    flex-shrink:0;
+  }
+  .id-card-header h1{
+    font-family: var(--font-display);
+    font-size:17px;
+    font-weight:600;
+    letter-spacing:.02em;
+  }
+  .id-card-header p{
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: var(--ink-light);
+    margin-top:2px;
+  }
+  .id-card-body{ padding:24px 26px 28px; }
+  .field-label{
+    font-size:10.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color: var(--ink-light);
+    display:block;
+    margin-bottom:6px;
+  }
+  .field{ margin-bottom:18px; }
+  .field input{
+    width:100%;
+    background: var(--paper);
+    border:1px solid var(--rule);
+    border-radius:3px;
+    padding:11px 12px;
+    font-size:14.5px;
+    color:var(--ink);
+    font-family: var(--font-mono);
+    letter-spacing:.02em;
+  }
+  .field input:focus{
+    outline:none;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(156,122,46,0.15);
+  }
+  .login-btn{
+    width:100%;
+    background: var(--ink);
+    color: var(--paper);
+    border:none;
+    border-radius:3px;
+    padding:12px;
+    font-size:13.5px;
+    font-weight:600;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .login-btn:hover{ background:#293c66; }
+  .login-btn:active{ transform: scale(.99); }
+  .login-hint{
+    margin-top:16px;
+    font-size:11.5px;
+    color: var(--ink-light);
+    text-align:center;
+    line-height:1.6;
+  }
+  .login-hint .mono{ color:var(--ink); }
+  .login-error{
+    margin-top:14px;
+    background: var(--red-ink-soft);
+    color: var(--red-ink);
+    border:1px solid var(--red-ink);
+    border-radius:3px;
+    padding:9px 12px;
+    font-size:12.5px;
+    display:none;
+  }
+  .login-error.show{ display:block; }
+
+  /* ---------- PORTAL SHELL ---------- */
+  #portal{
+    display:none;
+    min-height:100vh;
+    grid-template-columns: 232px 1fr;
+  }
+  #portal.active{ display:grid; }
+
+  aside{
+    background: var(--ink);
+    color: var(--paper);
+    padding:26px 0;
+    display:flex;
+    flex-direction:column;
+    position:sticky; top:0; height:100vh;
+  }
+  .brand{
+    padding:0 24px 22px;
+    border-bottom:1px solid rgba(246,241,228,0.14);
+    margin-bottom:20px;
+  }
+  .brand h1{
+    font-family: var(--font-display);
+    font-size:19px;
+    font-weight:700;
+  }
+  .brand span{
+    display:block;
+    font-size:10px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color: var(--brass-light);
+    margin-top:4px;
+  }
+  .id-chip{
+    margin:0 24px 22px;
+    background: rgba(246,241,228,0.06);
+    border:1px solid rgba(246,241,228,0.16);
+    border-radius:5px;
+    padding:14px;
+  }
+  .id-chip .avatar{
+    width:38px; height:38px;
+    border-radius:50%;
+    background: var(--brass-light);
+    color: var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-weight:700; font-size:14px;
+    margin-bottom:10px;
+  }
+  .id-chip .name{ font-size:13.5px; font-weight:600; }
+  .id-chip .roll{ font-size:11px; color: rgba(246,241,228,0.6); font-family:var(--font-mono); margin-top:2px;}
+
+  nav{ flex:1; padding:0 12px; }
+  nav button{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:none;
+    border:none;
+    color: rgba(246,241,228,0.72);
+    text-align:left;
+    padding:10px 12px;
+    border-radius:4px;
+    font-size:13.5px;
+    font-weight:500;
+    margin-bottom:2px;
+    transition: background .12s ease, color .12s ease;
+  }
+  nav button .num{
+    font-family: var(--font-mono);
+    font-size:10.5px;
+    color: var(--brass-light);
+    width:16px;
+  }
+  nav button:hover{ background: rgba(246,241,228,0.06); color: var(--paper); }
+  nav button.active{ background: var(--brass); color:#fff; }
+  nav button.active .num{ color: #fff; }
+
+  .logout-btn{
+    margin:14px 24px 0;
+    background:none;
+    border:1px solid rgba(246,241,228,0.22);
+    color: rgba(246,241,228,0.75);
+    padding:9px;
+    border-radius:4px;
+    font-size:12px;
+    letter-spacing:.04em;
+  }
+  .logout-btn:hover{ border-color: var(--red-ink-soft); color: var(--red-ink-soft); }
+
+  main{ padding:36px 44px 60px; max-width:980px; }
+  .page{ display:none; animation: fadeUp .35s ease; }
+  .page.active{ display:block; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .page-eyebrow{
+    font-size:11px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color: var(--brass);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .page h2{
+    font-family: var(--font-display);
+    font-size:28px;
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .page-sub{ color: var(--ink-light); font-size:14px; margin-bottom:28px; }
+
+  .card{
+    background: var(--paper-dark);
+    border:1px solid var(--rule);
+    border-radius:6px;
+    padding:22px 24px;
+  }
+
+  /* Dashboard */
+  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+  .stat-card{
+    background: var(--paper-dark);
+    border:1px solid var(--rule);
+    border-radius:6px;
+    padding:18px 18px 16px;
+    position:relative;
+  }
+  .stat-card .stat-label{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-light); margin-bottom:8px;
+  }
+  .stat-card .stat-value{
+    font-family: var(--font-display); font-size:26px; font-weight:700;
+  }
+  .stat-card .stat-sub{ font-size:11.5px; color:var(--ink-light); margin-top:4px; }
+  .stat-card.accent{ border-color: var(--brass); }
+  .stat-card.accent .stat-value{ color: var(--brass); }
+
+  .dash-row{ display:grid; grid-template-columns: 1.3fr 1fr; gap:18px; }
+  .card h3{ font-family: var(--font-display); font-size:15.5px; font-weight:600; margin-bottom:14px; }
+  .mini-list li{ list-style:none; display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed var(--rule); font-size:13px; }
+  .mini-list li:last-child{ border-bottom:none; }
+  .mini-list .g{ font-family:var(--font-mono); font-weight:600; }
+
+  /* Table (Marks) */
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
+    color: var(--ink-light); padding:0 10px 10px; border-bottom:2px solid var(--ink);
+  }
+  tbody td{
+    padding:13px 10px; border-bottom:1px dashed var(--rule); font-size:13.5px;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  .subj-code{ font-family:var(--font-mono); color:var(--ink-light); font-size:11.5px; }
+  .grade-pill{
+    display:inline-block; padding:3px 10px; border-radius:20px; font-family:var(--font-mono);
+    font-size:12px; font-weight:600; letter-spacing:.02em;
+  }
+  .grade-O, .grade-Aplus{ background:var(--green-ink-soft); color:var(--green-ink); }
+  .grade-A{ background:var(--green-ink-soft); color:var(--green-ink); }
+  .grade-Bplus, .grade-B{ background:#eee3c8; color:var(--brass); }
+  .grade-C{ background:#f1e6d8; color:#8a5a1f; }
+  .grade-F{ background:var(--red-ink-soft); color:var(--red-ink); }
+
+  .table-note{ font-size:11.5px; color:var(--ink-light); margin-top:14px; }
+
+  /* GPA calculator */
+  .gpa-layout{ display:grid; grid-template-columns: 1.5fr 1fr; gap:20px; align-items:start; }
+  .gpa-row{ display:grid; grid-template-columns: 1.7fr .8fr .8fr; gap:10px; align-items:center; padding:9px 0; }
+  .gpa-row-head{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-light); border-bottom:2px solid var(--ink); padding-bottom:9px; }
+  .gpa-row select, .gpa-row input{
+    width:100%; padding:8px 9px; border:1px solid var(--rule); border-radius:3px; background:var(--paper); font-family:var(--font-mono); font-size:13px;
+  }
+  .gpa-subj{ font-size:13px; }
+  .gpa-result{
+    position:relative;
+    text-align:center;
+    padding:30px 20px 26px;
+  }
+  .gpa-result .stat-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--ink-light); }
+  .gpa-result .gpa-number{
+    font-family:var(--font-display); font-size:56px; font-weight:700; color:var(--ink); line-height:1; margin:12px 0 6px;
+  }
+  .gpa-result .gpa-scale{ font-size:12px; color:var(--ink-light); }
+  .seal{
+    position:absolute; top:10px; right:14px;
+    width:84px; height:84px;
+    border:2px dashed var(--brass);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    transform: rotate(-10deg);
+    opacity:.85;
+  }
+  .seal span{
+    font-family:var(--font-mono); font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--brass); text-align:center; line-height:1.4;
+  }
+  .scale-key{ margin-top:18px; font-size:11.5px; color:var(--ink-light); line-height:2; }
+  .scale-key .mono{ color:var(--ink); margin-right:6px;}
+
+  /* Attendance */
+  .att-overall{ display:flex; align-items:center; gap:24px; margin-bottom:26px; }
+  .ring{ position:relative; width:104px; height:104px; flex-shrink:0; }
+  .ring svg{ transform:rotate(-90deg); }
+  .ring-label{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .ring-label b{ font-family:var(--font-display); font-size:21px; }
+  .ring-label span{ font-size:9.5px; color:var(--ink-light); text-transform:uppercase; letter-spacing:.06em; }
+  .att-note{ font-size:13px; color:var(--ink-light); max-width:340px; line-height:1.6; }
+  .att-note strong{ color:var(--ink); }
+
+  .att-bar-row{ display:grid; grid-template-columns: 1.4fr 3fr auto; gap:14px; align-items:center; padding:11px 0; border-bottom:1px dashed var(--rule); font-size:13px; }
+  .att-bar-row:last-child{ border-bottom:none; }
+  .att-track{ height:8px; background:var(--paper-darker); border-radius:20px; overflow:hidden; }
+  .att-fill{ height:100%; border-radius:20px; background:var(--green-ink); }
+  .att-fill.low{ background:var(--red-ink); }
+  .att-fill.mid{ background:var(--brass); }
+  .att-pct{ font-family:var(--font-mono); font-weight:600; font-size:12.5px; width:44px; text-align:right; }
+
+  /* Timetable */
+  .tt-wrap{ overflow-x:auto; }
+  table.tt{ min-width:720px; }
+  table.tt th{ text-align:center; }
+  table.tt td{ text-align:center; padding:10px 6px; vertical-align:middle; }
+  .tt-time{ font-family:var(--font-mono); font-size:11px; color:var(--ink-light); text-align:left !important; }
+  .tt-slot{
+    background: var(--paper); border:1px solid var(--rule); border-radius:5px;
+    padding:8px 6px; font-size:11.5px; line-height:1.4; min-height:44px;
+  }
+  .tt-slot b{ display:block; font-size:12px; }
+  .tt-slot span{ color:var(--ink-light); font-size:10px; }
+  .tt-slot.lunch{ background:var(--paper-darker); color:var(--ink-light); font-style:italic; }
+  .tt-slot.empty{ background:transparent; border:1px dashed var(--rule); color:var(--ink-light); }
+
+  footer.stamp-foot{
+    margin-top:34px; padding-top:16px; border-top:1px dashed var(--rule);
+    font-size:11px; color:var(--ink-light); display:flex; justify-content:space-between;
+  }
+
+  @media (max-width: 860px){
+    #portal.active{ grid-template-columns:1fr; }
+    aside{ position:relative; height:auto; }
+    main{ padding:24px 20px 50px; }
+    .stat-grid{ grid-template-columns:repeat(2,1fr); }
+    .dash-row{ grid-template-columns:1fr; }
+    .gpa-layout{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="id-card">
+    <div class="id-card-header">
+      <div class="id-card-crest">L</div>
+      <div>
+        <h1>Ledger</h1>
+        <p>Student Result Portal · Demo Access</p>
+      </div>
+    </div>
+    <div class="id-card-body">
+      <form id="login-form">
+        <div class="field">
+          <label class="field-label" for="roll">Roll Number</label>
+          <input type="text" id="roll" autocomplete="off" placeholder="CS2022047" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="pass">Password</label>
+          <input type="password" id="pass" autocomplete="off" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="login-btn">Sign In</button>
+        <div class="login-error" id="login-error">Roll number or password not recognised. Check the demo credentials below and try again.</div>
+      </form>
+      <div class="login-hint">
+        Demo credentials — Roll: <span class="mono">CS2022047</span> &nbsp;·&nbsp; Password: <span class="mono">demo123</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PORTAL ================= -->
+<div id="portal">
+  <aside>
+    <div class="brand">
+      <h1>Ledger</h1>
+      <span>Result Portal</span>
+    </div>
+    <div class="id-chip">
+      <div class="avatar">AR</div>
+      <div class="name">Aisha Rahman</div>
+      <div class="roll">CS2022047 · Sem VI</div>
+    </div>
+    <nav>
+      <button class="nav-btn active" data-page="dashboard"><span class="num">01</span>Dashboard</button>
+      <button class="nav-btn" data-page="marks"><span class="num">02</span>Marks</button>
+      <button class="nav-btn" data-page="gpa"><span class="num">03</span>GPA Calculator</button>
+      <button class="nav-btn" data-page="attendance"><span class="num">04</span>Attendance</button>
+      <button class="nav-btn" data-page="timetable"><span class="num">05</span>Timetable</button>
+    </nav>
+    <button class="logout-btn" id="logout-btn">Log out</button>
+  </aside>
+
+  <main>
+
+    <!-- ---- DASHBOARD ---- -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-eyebrow">Overview</div>
+      <h2>Welcome back, Aisha</h2>
+      <p class="page-sub">Semester VI · B.Tech Computer Science &amp; Engineering</p>
+
+      <div class="stat-grid">
+        <div class="stat-card accent">
+          <div class="stat-label">Current GPA</div>
+          <div class="stat-value">8.95</div>
+          <div class="stat-sub">10-point scale</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Attendance</div>
+          <div class="stat-value">88%</div>
+          <div class="stat-sub">Overall, this semester</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Subjects</div>
+          <div class="stat-value">6</div>
+          <div class="stat-sub">20 total credits</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Next Class</div>
+          <div class="stat-value" style="font-size:19px;">DBMS</div>
+          <div class="stat-sub">Mon · 10:00 AM</div>
+        </div>
+      </div>
+
+      <div class="dash-row">
+        <div class="card">
+          <h3>Recent Marks</h3>
+          <ul class="mini-list" id="dash-marks"></ul>
+        </div>
+        <div class="card">
+          <h3>Attendance Snapshot</h3>
+          <ul class="mini-list" id="dash-att"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- MARKS ---- -->
+    <section class="page" id="page-marks">
+      <div class="page-eyebrow">Academic Record</div>
+      <h2>Marks</h2>
+      <p class="page-sub">Semester VI · Internal + End-Semester combined score, out of 100</p>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Subject</th><th>Credits</th><th>Marks</th><th>Grade</th></tr>
+          </thead>
+          <tbody id="marks-table"></tbody>
+        </table>
+        <p class="table-note">Grades follow a 10-point scale: O (91–100) · A+ (81–90) · A (71–80) · B+ (61–70) · B (51–60) · C (41–50) · F (below 41).</p>
+      </div>
+    </section>
+
+    <!-- ---- GPA CALCULATOR ---- -->
+    <section class="page" id="page-gpa">
+      <div class="page-eyebrow">Simulator</div>
+      <h2>GPA Calculator</h2>
+      <p class="page-sub">Adjust grades or credits below to see how your GPA changes.</p>
+      <div class="gpa-layout">
+        <div class="card">
+          <div class="gpa-row gpa-row-head">
+            <div>Subject</div><div>Credits</div><div>Grade</div>
+          </div>
+          <div id="gpa-rows"></div>
+        </div>
+        <div class="card gpa-result">
+          <div class="seal"><span>Result<br>Verified</span></div>
+          <div class="stat-label">Calculated GPA</div>
+          <div class="gpa-number" id="gpa-output">8.95</div>
+          <div class="gpa-scale">out of 10.00</div>
+          <div class="scale-key">
+            <div><span class="mono">O</span>10 pts</div>
+            <div><span class="mono">A+</span>9 pts</div>
+            <div><span class="mono">A</span>8 pts</div>
+            <div><span class="mono">B+</span>7 pts</div>
+            <div><span class="mono">B</span>6 pts</div>
+            <div><span class="mono">C</span>5 pts</div>
+            <div><span class="mono">F</span>0 pts</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---- ATTENDANCE ---- -->
+    <section class="page" id="page-attendance">
+      <div class="page-eyebrow">Records</div>
+      <h2>Attendance</h2>
+      <p class="page-sub">Semester VI · Classes attended vs. held</p>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="att-overall">
+          <div class="ring">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#e3d9bd" stroke-width="10"/>
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#2f5233" stroke-width="10"
+                stroke-dasharray="276.5" stroke-dashoffset="33.2" stroke-linecap="round"/>
+            </svg>
+            <div class="ring-label"><b>88%</b><span>Overall</span></div>
+          </div>
+          <div class="att-note">
+            <strong>You're above the minimum requirement.</strong> Most institutes require at least 75% attendance per subject to sit the end-semester exam. Database Management Systems is closest to that line — keep an eye on it.
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>By Subject</h3>
+        <div id="att-rows"></div>
+      </div>
+    </section>
+
+    <!-- ---- TIMETABLE ---- -->
+    <section class="page" id="page-timetable">
+      <div class="page-eyebrow">Schedule</div>
+      <h2>Timetable</h2>
+      <p class="page-sub">Semester VI · Monday to Saturday</p>
+      <div class="card">
+        <div class="tt-wrap">
+          <table class="tt" id="tt-table"></table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="stamp-foot">
+      <span>Ledger Student Result Portal — Demo Data</span>
+      <span class="mono">Generated for preview purposes only</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+/* ---------------- DEMO DATA ---------------- */
+const CREDENTIALS = { roll: "CS2022047", pass: "demo123" };
+
+const GRADE_POINTS = { "O":10, "A+":9, "A":8, "B+":7, "B":6, "C":5, "F":0 };
+
+function gradeFromMarks(m){
+  if(m>=91) return "O";
+  if(m>=81) return "A+";
+  if(m>=71) return "A";
+  if(m>=61) return "B+";
+  if(m>=51) return "B";
+  if(m>=41) return "C";
+  return "F";
+}
+function gradeClass(g){ return "grade-" + g.replace("+","plus"); }
+
+const subjects = [
+  { code:"CN301", name:"Computer Networks",            credits:4, marks:88 },
+  { code:"CS302", name:"Operating Systems",             credits:4, marks:76 },
+  { code:"CS303", name:"Database Management Systems",   credits:4, marks:91 },
+  { code:"CS304", name:"Software Engineering",          credits:3, marks:82 },
+  { code:"CS305", name:"Web Technologies",              credits:3, marks:95 },
+  { code:"HS306", name:"Technical Communication",       credits:2, marks:70 },
+];
+
+const attendance = [
+  { code:"CN301", name:"Computer Networks",            pct:92 },
+  { code:"CS302", name:"Operating Systems",             pct:85 },
+  { code:"CS303", name:"Database Management Systems",   pct:78 },
+  { code:"CS304", name:"Software Engineering",          pct:96 },
+  { code:"CS305", name:"Web Technologies",              pct:88 },
+  { code:"HS306", name:"Technical Communication",       pct:90 },
+];
+
+const timetable = {
+  slots: ["9:00 – 10:00","10:00 – 11:00","11:00 – 12:00","12:00 – 1:00","1:00 – 2:00","2:00 – 3:00","3:00 – 4:00"],
+  days: ["Mon","Tue","Wed","Thu","Fri","Sat"],
+  grid: [
+    // Mon           Tue            Wed            Thu            Fri            Sat
+    ["CN301","CS303","CS302","CS305","CS304","HS306"],
+    ["CS302","CN301","CS305","CS303","CS302","CN301"],
+    ["CS304","CS304","CN301","CS302","CS305","—"],
+    ["LUNCH","LUNCH","LUNCH","LUNCH","LUNCH","LUNCH"],
+    ["CS305","HS306","CS304","CN301","CS303","—"],
+    ["HS306","CS302","CS303","CS304","CN301","—"],
+    ["Lab: DBMS","Lab: DBMS","—","Lab: CN","Lab: CN","—"],
+  ]
+};
+const subjMap = Object.fromEntries(subjects.map(s=>[s.code, s]));
+
+/* ---------------- LOGIN ---------------- */
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+loginForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const roll = document.getElementById('roll').value.trim();
+  const pass = document.getElementById('pass').value.trim();
+  if(roll === CREDENTIALS.roll && pass === CREDENTIALS.pass){
+    loginError.classList.remove('show');
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('portal').classList.add('active');
+    renderAll();
+  } else {
+    loginError.classList.add('show');
+  }
+});
+document.getElementById('logout-btn').addEventListener('click', ()=>{
+  document.getElementById('portal').classList.remove('active');
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('roll').value='';
+  document.getElementById('pass').value='';
+  loginError.classList.remove('show');
+});
+
+/* ---------------- NAV ---------------- */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+  });
+});
+
+/* ---------------- RENDER: MARKS ---------------- */
+function renderMarks(){
+  const tbody = document.getElementById('marks-table');
+  tbody.innerHTML = subjects.map(s=>{
+    const g = gradeFromMarks(s.marks);
+    return `<tr>
+      <td>${s.name}<br><span class="subj-code">${s.code}</span></td>
+      <td class="mono">${s.credits}</td>
+      <td class="mono">${s.marks}</td>
+      <td><span class="grade-pill ${gradeClass(g)}">${g}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------------- RENDER: DASHBOARD ---------------- */
+function renderDashboard(){
+  const dm = document.getElementById('dash-marks');
+  dm.innerHTML = subjects.slice(0,4).map(s=>{
+    const g = gradeFromMarks(s.marks);
+    return `<li>${s.name}<span class="g">${g}</span></li>`;
+  }).join('');
+  const da = document.getElementById('dash-att');
+  da.innerHTML = attendance.slice(0,4).map(a=>`<li>${a.name}<span class="g">${a.pct}%</span></li>`).join('');
+}
+
+/* ---------------- RENDER: GPA CALCULATOR ---------------- */
+const gpaState = subjects.map(s=>({ code:s.code, name:s.name, credits:s.credits, grade:gradeFromMarks(s.marks) }));
+
+function renderGpaRows(){
+  const wrap = document.getElementById('gpa-rows');
+  wrap.innerHTML = gpaState.map((row,i)=>`
+    <div class="gpa-row">
+      <div class="gpa-subj">${row.name}</div>
+      <div><input type="number" min="1" max="6" value="${row.credits}" data-idx="${i}" class="credit-input"></div>
+      <div>
+        <select data-idx="${i}" class="grade-input">
+          ${Object.keys(GRADE_POINTS).map(g=>`<option value="${g}" ${g===row.grade?'selected':''}>${g}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('.credit-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const i = +e.target.dataset.idx;
+      gpaState[i].credits = Math.max(1, +e.target.value || 1);
+      computeGpa();
+    });
+  });
+  wrap.querySelectorAll('.grade-input').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const i = +e.target.dataset.idx;
+      gpaState[i].grade = e.target.value;
+      computeGpa();
+    });
+  });
+}
+
+function computeGpa(){
+  let totalCredits = 0, totalPoints = 0;
+  gpaState.forEach(row=>{
+    totalCredits += row.credits;
+    totalPoints += row.credits * GRADE_POINTS[row.grade];
+  });
+  const gpa = totalCredits ? (totalPoints/totalCredits) : 0;
+  document.getElementById('gpa-output').textContent = gpa.toFixed(2);
+}
+
+/* ---------------- RENDER: ATTENDANCE ---------------- */
+function renderAttendance(){
+  const wrap = document.getElementById('att-rows');
+  wrap.innerHTML = attendance.map(a=>{
+    const cls = a.pct < 75 ? 'low' : (a.pct < 85 ? 'mid' : '');
+    return `<div class="att-bar-row">
+      <div>${a.name}<br><span class="subj-code">${a.code}</span></div>
+      <div class="att-track"><div class="att-fill ${cls}" style="width:${a.pct}%"></div></div>
+      <div class="att-pct">${a.pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- RENDER: TIMETABLE ---------------- */
+function renderTimetable(){
+  const t = timetable;
+  let html = '<thead><tr><th class="tt-time">Time</th>' + t.days.map(d=>`<th>${d}</th>`).join('') + '</tr></thead><tbody>';
+  t.slots.forEach((slot,r)=>{
+    html += `<tr><td class="tt-time">${slot}</td>`;
+    t.days.forEach((d,c)=>{
+      const code = t.grid[r][c];
+      if(code === 'LUNCH'){
+        html += `<td><div class="tt-slot lunch">Lunch Break</div></td>`;
+      } else if(code === '—'){
+        html += `<td><div class="tt-slot empty">Free</div></td>`;
+      } else if(code.startsWith('Lab')){
+        html += `<td><div class="tt-slot"><b>${code}</b><span>Lab Session</span></div></td>`;
+      } else {
+        const subj = subjMap[code];
+        html += `<td><div class="tt-slot"><b>${code}</b><span>${subj ? subj.name.split(' ').slice(0,2).join(' ') : ''}</span></div></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('tt-table').innerHTML = html;
+}
+
+/* ---------------- INIT ---------------- */
+function renderAll(){
+  renderDashboard();
+  renderMarks();
+  renderGpaRows();
+  computeGpa();
+  renderAttendance();
+  renderTimetable();
+}
+</script>
+</body>
+</html>
